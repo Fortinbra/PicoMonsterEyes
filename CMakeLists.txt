@@ -35,7 +35,18 @@ pico_sdk_init()
 
 # Add executable. Default name is the project name, version 0.1
 
-add_executable(PicoMonsterEyes main.cpp )
+add_executable(PicoMonsterEyes
+    main.cpp
+        
+    # Drivers
+    drivers/ssd1351_display.cpp
+    drivers/max98357a_i2s_output.cpp
+    drivers/spi_bus.cpp
+        
+    # Src
+    src/app.cpp
+    src/display_manager.cpp
+)
 
 pico_set_program_name(PicoMonsterEyes "PicoMonsterEyes")
 pico_set_program_version(PicoMonsterEyes "0.1")
@@ -50,7 +61,11 @@ target_link_libraries(PicoMonsterEyes
 
 # Add the standard include files to the build
 target_include_directories(PicoMonsterEyes PRIVATE
-        ${CMAKE_CURRENT_LIST_DIR}
+    ${CMAKE_CURRENT_LIST_DIR}
+    ${CMAKE_CURRENT_LIST_DIR}/include
+    ${CMAKE_CURRENT_LIST_DIR}/drivers
+    ${CMAKE_CURRENT_LIST_DIR}/src
+    ${CMAKE_CURRENT_LIST_DIR}/boards
 )
 
 # Add any user requested libraries
