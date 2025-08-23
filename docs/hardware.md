@@ -19,6 +19,46 @@ Suggested wiring (example):
 
 Note: Keep CS high when inactive; batch pixel transfers using a RAM buffer. Avoid per-pixel write loops.
 
+### Color‑coded wiring reference
+
+Wire color legend (your stated scheme):
+
+- Red = VCC (3V3)
+- Black = GND
+- Blue = DIN (MOSI)
+- Yellow = CLK (SCK)
+- Orange = CS
+- Green = DC (D/C)
+- White = RST (RESET)
+
+Using the current default pin assignments from `boards/pico2_pins.hpp` (shared SPI0):
+
+Shared signals (both displays)
+- Yellow (SCK)  -> GP18
+- Blue (DIN)    -> GP19
+- (MISO not used; leave unconnected)
+- Red (VCC)     -> 3V3 OUT
+- Black (GND)   -> GND
+
+Left display
+- Orange (CS)   -> GP17
+- Green (DC)    -> GP20
+- White (RST)   -> GP21
+
+Right display
+- Orange (CS)   -> GP22
+- Green (DC)    -> GP26
+- White (RST)   -> GP27
+
+Optional pin reductions:
+- You may tie both RST lines together (e.g. to GP21) and/or both DC lines (e.g. to GP20) to save GPIOs; then adjust the second display’s pins in `pico2_pins.hpp`.
+- Keep separate CS lines; they must remain distinct.
+
+Practical tips:
+- Route the shared SCK and DIN as a short trunk to both modules; branch near the displays to minimize skew.
+- Keep the RESET (white) line pulled high by default; firmware will pulse it low on init.
+- If you observe color channel swapping, adjust the SSD1351 remap setting in the driver.
+
 ## Audio (MAX98357A)
 
 - Data: I2S (BCLK, LRCLK, DIN)

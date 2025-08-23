@@ -41,7 +41,8 @@ bool Ssd1351Display::init() {
     write_cmd(CMD_DISPLAYOFFSET); uint8_t off = 0; write_data(&off, 1);
     write_cmd(CMD_STARTLINE); uint8_t sl = 0; write_data(&sl, 1);
     // Remap: RGB565, 65k color, COM split etc. Typical 0x72 or 0x74; 0x72 gives RGB565
-    write_cmd(CMD_SETREMAP); uint8_t remap[2] = {0x72, 0x00}; write_data(remap, 2);
+    // Set remap & color depth: 0x72 yielded swapped R/B on this module; 0x76 corrects color order (RGB565)
+    write_cmd(CMD_SETREMAP); uint8_t remap[2] = {0x76, 0x00}; write_data(remap, 2);
     // Function select: internal regulator
     write_cmd(CMD_FUNCTIONSELECT); uint8_t fs = 0x01; write_data(&fs, 1);
     // Contrast/brightness settings (reasonable defaults)

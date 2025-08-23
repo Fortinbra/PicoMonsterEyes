@@ -23,7 +23,7 @@ if (EXISTS ${picoVscode})
     include(${picoVscode})
 endif()
 # ====================================================================================
-set(PICO_BOARD pico2 CACHE STRING "Board type")
+set(PICO_BOARD pimoroni_pico_plus2_rp2350 CACHE STRING "Board type" FORCE)
 
 # Pull in Raspberry Pi Pico SDK (must be before project)
 include(pico_sdk_import.cmake)
@@ -46,6 +46,8 @@ add_executable(PicoMonsterEyes
     # Src
     src/app.cpp
     src/display_manager.cpp
+    # Assets
+    assets/graphics/default_eye.cpp
 )
 
 pico_set_program_name(PicoMonsterEyes "PicoMonsterEyes")
@@ -66,6 +68,7 @@ target_include_directories(PicoMonsterEyes PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/drivers
     ${CMAKE_CURRENT_LIST_DIR}/src
     ${CMAKE_CURRENT_LIST_DIR}/boards
+    ${CMAKE_CURRENT_LIST_DIR}/assets/graphics
 )
 
 # Add any user requested libraries

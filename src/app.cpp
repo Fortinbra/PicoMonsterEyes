@@ -7,6 +7,7 @@
 #include "boards/pico2_pins.hpp"
 #include "drivers/spi_bus.hpp"
 #include "drivers/ssd1351_display.hpp"
+#include "default_eye.hpp" // sclera asset (partial)
 
 namespace eyes {
 
@@ -28,9 +29,25 @@ bool App::init() {
     bool ok = left.init() && right.init();
     if (!ok) return false;
 
-    // Simple test pattern
-    left.fill(0xF800);  // Red
-    right.fill(0x001F); // Blue
+    // Allocate a static framebuffer (RGB565)
+    static uint16_t frame[128 * 128];
+    Rect full{0,0,128,128};
+
+    // Simple static eye test: center-crop 128x128 from 200x200 sclera asset
+    constexpr int SRC_W = PME_SCLERA_WIDTH;
+    constexpr int SRC_H = PME_SCLERA_HEIGHT;
+    const int x0 = (SRC_W - 128) / 2;
+    const int y0 = (SRC_H - 128) / 2;
+    for (int y = 0; y < 128; ++y) {
+        const uint16_t* row = &pme_sclera[y0 + y][x0];
+        for (int x = 0; x < 128; ++x) {
+            frame[y*128 + x] = row[x];
+        }
+    }
+    left.blit(frame, full);
+    right.blit(frame, full);
+
+    // NOTE: Currently only sclera background. Iris/eyelids will be layered later.
 
     return true;
 }
