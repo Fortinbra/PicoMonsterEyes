@@ -140,23 +140,13 @@ void App::advance_emotion() {
 void App::loop() {
     Rect full{0,0,kFrameW,kFrameH};
     while (true) {
-        // Real time delta using hardware timer
-        if (!fps_last_sample_us_) fps_last_sample_us_ = time_us_64();
-        uint64_t now_us = time_us_64();
-        float dt = (now_us - fps_last_sample_us_) * 1e-6f;
+    // Real time delta using hardware timer
+    if (!last_time_us_) last_time_us_ = time_us_64();
+    uint64_t now_us = time_us_64();
+    float dt = (now_us - last_time_us_) * 1e-6f;
         if (dt <= 0.f) dt = 0.0005f; // guard
         t_ += dt;
-        // FPS tracking (real time)
-        fps_frame_counter_++;
-        fps_accum_time_ += dt;
-        if (fps_accum_time_ >= 1.0f) {
-            float fps_calc = (float)fps_frame_counter_ / fps_accum_time_;
-            if (fps_calc < 0.f) fps_calc = 0.f; if (fps_calc > 99.f) fps_calc = 99.f;
-            fps_value_ = (uint8_t) (int)(fps_calc + 0.5f);
-            fps_frame_counter_ = 0;
-            fps_accum_time_ = 0.f;
-        }
-        fps_last_sample_us_ = now_us;
+    last_time_us_ = now_us;
         // Emotion cycling timer
         emotion_timer_ += 0.02f;
         if (emotion_timer_ >= emotion_cycle_len_) {
@@ -363,38 +353,10 @@ void App::loop() {
     // Use left params (mirror flag ignored in base) then apply eyelids for each eye.
     // Draw function (white)
     // Overlay pixel draw (invert Y to match physical panel orientation)
-    auto draw_px = [&](int x,int y){
-        if ((unsigned)x < kFrameW && (unsigned)y < kFrameH) {
-            int py = kFrameH - 1 - y; // invert vertical axis
-            frame_[py*kFrameW + x] = 0xFFFF;
-        }
-    };
-        static const uint8_t font3x5[10][5] = {
-            {0b111,0b101,0b101,0b101,0b111}, //0
-            {0b010,0b110,0b010,0b010,0b111}, //1
-            {0b111,0b001,0b111,0b100,0b111}, //2
-            {0b111,0b001,0b111,0b001,0b111}, //3
-            {0b101,0b101,0b111,0b001,0b001}, //4
-            {0b111,0b100,0b111,0b001,0b111}, //5
-            {0b111,0b100,0b111,0b101,0b111}, //6
-            {0b111,0b001,0b010,0b010,0b010}, //7
-            {0b111,0b101,0b111,0b101,0b111}, //8
-            {0b111,0b101,0b111,0b001,0b111}, //9
-        };
-    int tens = fps_value_ / 10;
-    int ones = fps_value_ % 10;
-    int ox = 1, oy = 1; // logical origin (after Y invert) at visual top-left
-        auto draw_digit = [&](int d,int dx){
-            for(int ry=0;ry<5;++ry){
-                uint8_t row = font3x5[d][ry];
-                for(int rx=0;rx<3;++rx){ if(row & (1<<(2-rx))) draw_px(ox+dx+rx, oy+ry); }
-            }
-        };
+    // FPS overlay removed per request.
     // Render base once into base_frame_ using left params (mirror flag ignored for base content)
     render_eye_base(base_frame_, params_left_);
-    auto draw_overlays = [&](){
-        draw_digit(tens,0); draw_digit(ones,4); // digits only (arrow removed)
-    };
+    auto draw_overlays = [&](){ /* no-op */ };
     // LEFT EYE: copy base, apply left eyelids, overlays, blit
     std::memcpy(frame_, base_frame_, sizeof(frame_));
     apply_eyelids(frame_, params_left_);

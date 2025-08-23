@@ -64,12 +64,8 @@ private:
     float blink_open_dur_  = 0.16f;
     float blink_period_base_ = 5.5f;   // average seconds between blinks
     float blink_period_jitter_ = 0.9f; // added *uniform*[0,1) * jitter
-
-    // FPS tracking (updated once per second)
-    uint32_t fps_frame_counter_ = 0;
-    float fps_accum_time_ = 0.f;
-    uint8_t fps_value_ = 0; // 0..99 shown
-    uint64_t fps_last_sample_us_ = 0; // real-time sampling baseline
+    // Time delta tracking
+    uint64_t last_time_us_ = 0; // baseline for dt accumulation
 
     float rand01() {
         rng_state_ = rng_state_ * 1664525u + 1013904223u; // LCG
