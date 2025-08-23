@@ -17,6 +17,7 @@ public:
     void blit(uint16_t const* pixels, const Rect& area) override;
     uint16_t width() const override { return w_; }
     uint16_t height() const override { return h_; }
+    void enable_dma(bool en) { use_dma_ = en; }
 
 private:
     // SSD1351 command set (subset)
@@ -56,6 +57,8 @@ private:
     uint8_t cs_;
     uint8_t dc_;
     uint8_t res_;
+    bool use_dma_ = true; // default attempt DMA
+    int dma_tx_chan_ = -1;
 };
 
 } // namespace eyes

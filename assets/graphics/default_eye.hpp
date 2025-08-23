@@ -8,21 +8,41 @@
 //    the same data layout but rename symbols with a project-local prefix to avoid
 //    potential global collisions and to allow multiple eye asset sets in the future.
 //  - Data are 16-bit RGB565 big-endian values (as used by the original project).
-//  - Only a subset (sclera array) is imported now for initial static rendering.
-//  - Additional arrays (iris, upper/lower eyelid threshold maps, polar map) will
-//    be imported when implementing dynamic iris scaling & blinking.
-//
-// TODO: Import the remaining arrays: iris, polar, upper, lower, along with the
-//       IRIS_* constants and any required dimension macros.
+//  - Initially only the sclera was wrapped. The iris map is now also exposed.
+//  - Remaining arrays (polar distortion map, eyelid threshold maps) will follow
+//    once dynamic motion & blinking are implemented.
 //
 #pragma once
 #include <cstdint>
 
 // Dimensions from original file
-#define PME_SCLERA_WIDTH  200
-#define PME_SCLERA_HEIGHT 200
+#define PME_SCLERA_WIDTH      200
+#define PME_SCLERA_HEIGHT     200
 
-extern const uint16_t pme_sclera[PME_SCLERA_HEIGHT][PME_SCLERA_WIDTH];
+// Iris source map (polar/radial color data) dimensions from upstream file.
+// The upstream code maps an (IRIS_WIDTH x IRIS_HEIGHT) circle using this
+// unwrapped iris color table. We will perform a simple polar lookup for now.
+#define PME_IRIS_MAP_WIDTH    256
+#define PME_IRIS_MAP_HEIGHT   64
 
-// Truncated data declaration: full data will be provided in a dedicated .cpp to
-// keep compile units smaller and avoid huge header parses.
+// Final rendered iris bounding box (a circle inscribed in this square).
+#define PME_IRIS_WIDTH        80
+#define PME_IRIS_HEIGHT       80
+
+// Eyelid mask dimensions (128x128 screen). Values are 0-255 threshold maps.
+#define PME_EYELID_WIDTH      128
+#define PME_EYELID_HEIGHT     128
+
+// Accessor to underlying sclera image (returns a reference to 2D array)
+const uint16_t (&get_sclera())[PME_SCLERA_HEIGHT][PME_SCLERA_WIDTH];
+
+// Accessor to underlying iris color map (radial rows * angular columns)
+const uint16_t (&get_iris_map())[PME_IRIS_MAP_HEIGHT][PME_IRIS_MAP_WIDTH];
+
+// Eyelid threshold maps (0 transparent -> 255 fully covered). Upper covers from top downward,
+// lower covers from bottom upward. Taken from upstream 'upper' and 'lower' arrays when
+// SYMMETRICAL_EYELID is defined.
+const uint8_t (&get_upper_eyelid())[PME_EYELID_HEIGHT][PME_EYELID_WIDTH];
+const uint8_t (&get_lower_eyelid())[PME_EYELID_HEIGHT][PME_EYELID_WIDTH];
+
+// Large data are defined in default_eye.cpp via upstream include; we only expose accessors here.

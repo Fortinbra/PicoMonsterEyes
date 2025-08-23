@@ -46,6 +46,7 @@ add_executable(PicoMonsterEyes
     # Src
     src/app.cpp
     src/display_manager.cpp
+    src/eye_renderer.cpp
     # Assets
     assets/graphics/default_eye.cpp
 )
@@ -75,7 +76,10 @@ target_include_directories(PicoMonsterEyes PRIVATE
 target_link_libraries(PicoMonsterEyes 
         hardware_spi
         hardware_i2c
+    hardware_dma
         )
 
 pico_add_extra_outputs(PicoMonsterEyes)
+# (touched to force rebuild after asset accessor refactor)
+# End of file
 

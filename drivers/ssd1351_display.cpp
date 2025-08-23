@@ -3,6 +3,7 @@
 #include "pico/stdlib.h"
 #include "hardware/spi.h"
 #include "hardware/gpio.h"
+#include "hardware/dma.h"
 
 namespace eyes {
 
@@ -68,6 +69,25 @@ bool Ssd1351Display::init() {
     cs_deselect();
 
     sleep_ms(20);
+
+    // Allocate TX DMA channel (optional)
+    if (use_dma_ && dma_tx_chan_ < 0) {
+        int ch = dma_claim_unused_channel(false);
+        if (ch >= 0) {
+            dma_tx_chan_ = ch;
+            // Configure channel for 8-bit transfers paced by SPI TX DREQ
+            dma_channel_config c = dma_channel_get_default_config(ch);
+            channel_config_set_transfer_data_size(&c, DMA_SIZE_8);
+            channel_config_set_dreq(&c, spi_get_dreq(bus_.inst(), true));
+            dma_channel_configure(ch, &c,
+                &spi_get_hw(bus_.inst())->dr, // dst: SPI data register
+                nullptr,                      // src set per transfer
+                0,                            // count set per transfer
+                false);
+        } else {
+            use_dma_ = false; // fallback
+        }
+    }
     return true;
 }
 
@@ -95,7 +115,28 @@ void Ssd1351Display::blit(uint16_t const* pixels, const Rect& area) {
     cs_select();
     set_window(area.x, area.y, area.w, area.h);
     write_cmd(CMD_WRITERAM);
-    write_data_u16(pixels, static_cast<size_t>(area.w) * area.h);
+    size_t count = (size_t)area.w * area.h;
+    if (use_dma_ && dma_tx_chan_ >= 0) {
+        // Convert line-by-line to reduce temp buffer size
+        constexpr size_t LINE_MAX = 128; // width cap
+        uint8_t conv[LINE_MAX * 2];
+        const uint16_t* src = pixels;
+        for (int y=0; y<area.h; ++y) {
+            size_t line_pixels = area.w;
+            for (size_t i=0;i<line_pixels;++i) {
+                uint16_t px = src[i];
+                conv[2*i]   = (uint8_t)(px >> 8);
+                conv[2*i+1] = (uint8_t)(px & 0xFF);
+            }
+            src += area.w;
+            dc_data();
+            dma_channel_set_read_addr(dma_tx_chan_, conv, false);
+            dma_channel_set_trans_count(dma_tx_chan_, line_pixels*2, true);
+            dma_channel_wait_for_finish_blocking(dma_tx_chan_);
+        }
+    } else {
+        write_data_u16(pixels, count);
+    }
     cs_deselect();
 }
 
@@ -124,11 +165,21 @@ void Ssd1351Display::write_data(const uint8_t* data, size_t len) {
 
 void Ssd1351Display::write_data_u16(const uint16_t* data, size_t count) {
     if (!data || !count) return;
-    // SSD1351 expects big-endian for 16-bit; convert on the fly
     dc_data();
-    for (size_t i = 0; i < count; ++i) {
-        uint8_t be[2] = { static_cast<uint8_t>(data[i] >> 8), static_cast<uint8_t>(data[i] & 0xFF) };
-        spi_write_blocking(bus_.inst(), be, 2);
+    // Convert in chunks to reduce per-pixel SPI calls
+    constexpr size_t CHUNK = 256; // larger burst for better throughput
+    uint8_t buf[CHUNK * 2];
+    size_t i = 0;
+    while (i < count) {
+        size_t n = count - i;
+        if (n > CHUNK) n = CHUNK;
+        for (size_t k = 0; k < n; ++k) {
+            uint16_t px = data[i + k];
+            buf[2*k]     = static_cast<uint8_t>(px >> 8);
+            buf[2*k + 1] = static_cast<uint8_t>(px & 0xFF);
+        }
+        spi_write_blocking(bus_.inst(), buf, n * 2);
+        i += n;
     }
 }
 
