@@ -1,0 +1,3 @@
+[submodule "external/Uncanny_Eyes"]
+	path = external/Uncanny_Eyes
+	url = https://github.com/adafruit/Uncanny_Eyes.git
