@@ -13,32 +13,41 @@ const int32_t Max98357aI2sOutput::silence_[Max98357aI2sOutput::kSilenceFrames] =
 Max98357aI2sOutput* Max98357aI2sOutput::s_instance_ = nullptr;
 
 bool Max98357aI2sOutput::init(uint32_t sample_rate_hz) {
-    gpio_set_function(bclk_, GPIO_FUNC_PIO0);
-    gpio_set_function(lrclk_, GPIO_FUNC_PIO0);
-    gpio_set_function(din_, GPIO_FUNC_PIO0);
+    stop();
 
-    pio_ = pio0;
-    pio_offset_ = pio_add_program(pio_, &audio_i2s_program);
-    sm_ = pio_claim_unused_sm(pio_, true);
-    audio_i2s_program_init(pio_, sm_, pio_offset_, din_, bclk_);
+    if (!pio_) {
+        gpio_set_function(bclk_, GPIO_FUNC_PIO0);
+        gpio_set_function(lrclk_, GPIO_FUNC_PIO0);
+        gpio_set_function(din_, GPIO_FUNC_PIO0);
+
+        pio_ = pio0;
+        pio_offset_ = pio_add_program(pio_, &audio_i2s_program);
+        sm_ = pio_claim_unused_sm(pio_, true);
+        audio_i2s_program_init(pio_, sm_, pio_offset_, din_, bclk_);
+    } else {
+        pio_sm_clear_fifos(pio_, sm_);
+        pio_sm_restart(pio_, sm_);
+    }
 
     // SM runs at sample_rate_hz * 64 (32 bits/frame, 2 SM cycles/bit); see audio_i2s.pio.
     uint32_t sys_hz = clock_get_hz(clk_sys);
     uint32_t divider = sys_hz * 4 / sample_rate_hz;
     pio_sm_set_clkdiv_int_frac(pio_, sm_, static_cast<uint16_t>(divider >> 8u), static_cast<uint8_t>(divider & 0xffu));
 
-    dma_chan_ = dma_claim_unused_channel(true);
-    dma_channel_config c = dma_channel_get_default_config(dma_chan_);
-    channel_config_set_transfer_data_size(&c, DMA_SIZE_32);
-    channel_config_set_read_increment(&c, true);
-    channel_config_set_write_increment(&c, false);
-    channel_config_set_dreq(&c, pio_get_dreq(pio_, sm_, true));
-    dma_channel_configure(dma_chan_, &c, &pio_->txf[sm_], nullptr, 0, false);
+    if (dma_chan_ < 0) {
+        dma_chan_ = dma_claim_unused_channel(true);
+        dma_channel_config c = dma_channel_get_default_config(dma_chan_);
+        channel_config_set_transfer_data_size(&c, DMA_SIZE_32);
+        channel_config_set_read_increment(&c, true);
+        channel_config_set_write_increment(&c, false);
+        channel_config_set_dreq(&c, pio_get_dreq(pio_, sm_, true));
+        dma_channel_configure(dma_chan_, &c, &pio_->txf[sm_], nullptr, 0, false);
 
-    s_instance_ = this;
-    irq_set_exclusive_handler(DMA_IRQ_0, dma_irq_handler);
-    irq_set_enabled(DMA_IRQ_0, true);
-    dma_irqn_set_channel_enabled(0, dma_chan_, true);
+        s_instance_ = this;
+        irq_set_exclusive_handler(DMA_IRQ_0, dma_irq_handler);
+        irq_set_enabled(DMA_IRQ_0, true);
+        dma_irqn_set_channel_enabled(0, dma_chan_, true);
+    }
 
     frames_written_ = 0;
     frames_completed_ = 0;

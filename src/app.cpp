@@ -7,7 +7,6 @@
 #include "boards/pico2_pins.hpp"
 #include "drivers/spi_bus.hpp"
 #include "drivers/ssd1351_display.hpp"
-#include "drivers/max98357a_i2s_output.hpp"
 #include "default_eye.hpp"
 #include "eye_renderer.hpp"
 #include <cmath>
@@ -25,7 +24,6 @@ namespace {
     SpiBus* g_spi = nullptr;
     Ssd1351Display* g_left = nullptr;
     Ssd1351Display* g_right = nullptr;
-    Max98357aI2sOutput* g_audio = nullptr;
 
     // Per-emotion eyelid shape adjustment arrays (int8 per row, 0 = no change).
     // Positive values LOWER upper lid (more closed) and RAISE lower lid (more closed)
@@ -104,12 +102,6 @@ bool App::init() {
     render_eye(frame_, params_right_);
     right_->blit(frame_, full);
 
-    static Max98357aI2sOutput audio(pins::i2s_bclk, pins::i2s_lrclk, pins::i2s_din);
-    if (audio.init((uint32_t)kAudioSampleRate) && audio.start()) {
-        g_audio = &audio;
-    }
-    audio_ = g_audio;
-
     return true;
 }
 
@@ -144,23 +136,6 @@ void App::advance_emotion() {
     emotion_ = static_cast<Emotion>(idx);
     emotion_timer_ = 0.f;
     emotion_fade_ = 0.f; // restart fade
-}
-
-// Fills as much of the output ring as is free with distinct L/R sine test tones.
-void App::feed_audio() {
-    if (!audio_) return;
-    static int16_t buf[2 * 256];
-    size_t avail = audio_->available_frames();
-    size_t to_gen = avail < 256 ? avail : 256;
-    for (size_t i = 0; i < to_gen; ++i) {
-        tone_phase_l_ += kToneFreqL / kAudioSampleRate;
-        if (tone_phase_l_ >= 1.f) tone_phase_l_ -= 1.f;
-        tone_phase_r_ += kToneFreqR / kAudioSampleRate;
-        if (tone_phase_r_ >= 1.f) tone_phase_r_ -= 1.f;
-        buf[2 * i]     = (int16_t)(std::sin(tone_phase_l_ * 6.2831853f) * 6000.f);
-        buf[2 * i + 1] = (int16_t)(std::sin(tone_phase_r_ * 6.2831853f) * 6000.f);
-    }
-    audio_->write_frames(buf, to_gen);
 }
 
 void App::loop() {
@@ -397,7 +372,6 @@ void App::loop() {
     apply_eyelids(frame_, params_right_);
     draw_overlays();
     if (right_) right_->blit(frame_, full);
-        feed_audio();
         tight_loop_contents();
     }
 }

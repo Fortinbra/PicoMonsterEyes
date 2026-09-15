@@ -2,9 +2,11 @@
 
 ## Status
 
-Proposed. This feature depends on completion of [Stereo I2S Audio Output](feature-stereo-i2s-audio.md). It will let a phone discover the Pico 2 W as a Bluetooth speaker and play received audio through the Adafruit Stereo I2S 3W Amplifier Breakout - Dual MAX98357A.
+Implemented in firmware; physical hardware acceptance testing remains. A phone can discover the Pico 2 W as `Pico Monster Eyes`, pair using Bluetooth Classic A2DP, and play SBC-decoded stereo audio through the Adafruit Stereo I2S 3W Amplifier Breakout - Dual MAX98357A.
 
-The firmware targets `pico2_w`, and the installed Pico SDK includes `pico_btstack` and `pico_cyw43_arch`. The official upstream `pico-examples` repository provides `a2dp_sink_demo` ("A2DP Sink - Receive Audio Stream and Control Playback") as the implementation baseline. Pico Bluetooth audio examples require `pico-extras`, so this project must use a compatible `pico-examples`/`pico-extras` checkout and record the pinned revisions before integration.
+The firmware targets `pico2_w`, and the installed Pico SDK includes `pico_btstack` and `pico_cyw43_arch`. The official upstream `pico-examples` repository provides `a2dp_sink_demo` ("A2DP Sink - Receive Audio Stream and Control Playback") as the implementation baseline. The upstream Pico audio backend requires `pico-extras`, but this project replaces that backend with its existing I2S driver.
+
+This implementation reuses the project's DMA-backed I2S output instead of `pico-extras`. CMake fetches BTstack commit `eb0bb8b5ea6d234ccb940313b47f7a5c3b4e20ec`, the exact gitlink pinned by Pico SDK 2.3.1. The A2DP sink application comes from that dependency's `example/a2dp_sink_demo.c`; review its license before commercial distribution.
 
 ## Goal
 
