@@ -20,6 +20,13 @@ private:
     // Displays (constructed in init)
     class Ssd1351Display* left_ = nullptr;
     class Ssd1351Display* right_ = nullptr;
+    // Audio (constructed in init); distinct L/R test tones until a real producer exists
+    class Max98357aI2sOutput* audio_ = nullptr;
+    float tone_phase_l_ = 0.f;
+    float tone_phase_r_ = 0.f;
+    static constexpr float kToneFreqL = 440.f;
+    static constexpr float kToneFreqR = 523.25f;
+    static constexpr float kAudioSampleRate = 22050.f;
     // Eye parameters (animated pupil)
     EyeRenderParams params_left_{}; // left eye params
     EyeRenderParams params_right_{}; // right eye params
@@ -73,6 +80,7 @@ private:
     }
     void choose_new_target();
     void advance_emotion();
+    void feed_audio();
 };
 
 } // namespace eyes

@@ -1,17 +1,17 @@
 # Copilot Instructions for PicoMonsterEyes
 
-This repository is a C++ firmware project targeting Raspberry Pi Pico boards using the Raspberry Pi Pico SDK v2.2.0, built with CMake and Ninja. The firmware drives a Frankenstein's Monster animatronic's "eyes": two WaveShare 1.5" RGB OLED 128×128 SPI displays (65K colors, SSD1351-class) and provides audio output via a MAX98357A I2S amplifier. Use these rules when proposing code, tasks, or commands.
+This repository is a C++ firmware project targeting Raspberry Pi Pico boards using the Raspberry Pi Pico SDK v2.3.1, built with CMake and Ninja. The firmware drives a Frankenstein's Monster animatronic's "eyes": two WaveShare 1.5" RGB OLED 128×128 SPI displays (65K colors, SSD1351-class) and provides stereo audio output via a MAX98357A-based I2S amplifier. Use these rules when proposing code, tasks, or commands.
 
 ## Project facts
 - Language: C++17 (see `CMakeLists.txt`: `set(CMAKE_CXX_STANDARD 17)`).
-- SDK: Raspberry Pi Pico SDK 2.2.0 (via `pico_sdk_import.cmake`).
+- SDK: Raspberry Pi Pico SDK 2.3.1 (via `pico_sdk_import.cmake`).
 - Tooling: CMake + Ninja generator; tasks are preconfigured to build/flash.
 - Target: `PicoMonsterEyes` executable with `pico_stdlib`, `hardware_spi`, and `hardware_i2c`.
 - Board: `PICO_BOARD` is `pico2` by default.
 
 ## Hardware scope
 - Displays: 2× WaveShare 1.5" RGB OLED, 128×128, 65K colors, SPI (SSD1351-compatible). Shared SPI bus recommended with per-display CS/DC/RES.
-- Audio: MAX98357A Class-D I2S amplifier (Mono). Use PIO-based I2S on Pico SDK (BCLK, LRCLK, DIN) with 3.3V logic.
+- Audio: MAX98357A Class-D I2S amplifier (Stereo, dual MAX98357A breakout). PIO-based I2S on Pico SDK (BCLK, LRCLK, DIN) with 3.3V logic; BCLK and LRCLK must be on consecutive GPIOs.
 - Keep pin mappings centralized (e.g., in `boards/` or a single header). Prefer `constexpr` pin constants and avoid scattering raw GPIO numbers.
 
 ## Build and flash policy
@@ -45,7 +45,7 @@ C++ practices for Pico SDK:
 
 Display and audio specifics:
 - Displays: Create a `Display` interface with concrete `Ssd1351Display` drivers. Support two instances on a shared SPI bus with separate CS/DC/RES. Batch SPI transfers; avoid per-pixel calls. Provide simple draw APIs (fill, blit, rect) and coordinate system abstractions.
-- Audio: Create an `AudioOutput` interface with a `Max98357aI2sOutput` that uses PIO-based I2S. Use a lock-free or IRQ-safe ring buffer for PCM samples; target 16-bit mono at a modest sample rate (e.g., 22.05/44.1 kHz as feasible). Keep ISR/PIO callbacks lean.
+- Audio: Create an `AudioOutput` interface with a `Max98357aI2sOutput` that uses PIO-based I2S. Use a lock-free or IRQ-safe ring buffer for PCM samples; target 16-bit interleaved stereo at a modest sample rate (e.g., 22.05/44.1 kHz as feasible). Keep ISR/PIO callbacks lean.
 
 ## CMake/Ninja guidance
 - Keep `CMakeLists.txt` the single source of truth; add new source files to `add_executable` or use `target_sources`.
@@ -93,4 +93,4 @@ Suggested high-level types:
 - For MAX98357A, use PIO-based I2S from Pico SDK examples as a baseline; expose pins (BCLK, LRCLK, DIN) via config.
 - If proposing new files, follow the structure above and update `CMakeLists.txt` with `target_sources` accordingly.
 
-These instructions are binding for Copilot suggestions in this repository. Keep edits aligned with Pico SDK 2.2.0 and Ninja-based builds initiated via tasks only.
+These instructions are binding for Copilot suggestions in this repository. Keep edits aligned with Pico SDK 2.3.1 and Ninja-based builds initiated via tasks only.

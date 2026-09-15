@@ -1,6 +1,6 @@
 # Hardware
 
-This project drives two WaveShare 1.5" RGB OLED modules (SSD1351-compatible, 128×128, 65K colors) over SPI and outputs mono audio via a MAX98357A I2S amplifier. The default board is Raspberry Pi Pico 2 (RP2350) using 3.3V logic.
+This project drives two WaveShare 1.5" RGB OLED modules (SSD1351-compatible, 128×128, 65K colors) over SPI and outputs stereo audio via a MAX98357A-based I2S amplifier. The default board is Raspberry Pi Pico 2 (RP2350) using 3.3V logic.
 
 ## Displays (x2)
 
@@ -59,17 +59,19 @@ Practical tips:
 - Keep the RESET (white) line pulled high by default; firmware will pulse it low on init.
 - If you observe color channel swapping, adjust the SSD1351 remap setting in the driver.
 
-## Audio (MAX98357A)
+## Audio (MAX98357A / dual MAX98357A stereo breakout)
 
-- Data: I2S (BCLK, LRCLK, DIN)
-- Implementation: Pico SDK PIO-based I2S; 16-bit mono at 22.05 or 44.1 kHz
+- Data: I2S (BCLK, LRCLK, DIN). BCLK and LRCLK must be on consecutive GPIOs (LRCLK = BCLK + 1); the `audio_i2s` PIO program relies on this.
+- Implementation: PIO I2S transmitter (`drivers/audio_i2s.pio`) + one DMA channel per `Max98357aI2sOutput`; 16-bit interleaved stereo at 22.05 kHz initially (44.1 kHz planned)
 - Power: 3.3–5V input on module; logic is 3.3V tolerant
 
-Suggested pins (example; to be finalized in a `boards/` header):
+Current pins (from `boards/pico2_pins.hpp`):
 
 - BCLK -> GPIO10
 - LRCLK -> GPIO11
 - DIN -> GPIO12
+
+If the left/right channels sound swapped, swap the L/R samples when packing frames in `Max98357aI2sOutput::write_frames` rather than rewiring.
 
 ## Power and grounding
 

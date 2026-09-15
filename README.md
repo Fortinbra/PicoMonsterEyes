@@ -1,19 +1,19 @@
 # PicoMonsterEyes
 
-Firmware for a Frankenstein's Monster animatronic head. Drives two WaveShare 1.5" RGB OLED displays (128×128, SPI) as animated eyes and outputs audio through a MAX98357A I2S amplifier. Built on Raspberry Pi Pico SDK 2.2.0 in C++17 with CMake + Ninja.
+Firmware for a Frankenstein's Monster animatronic head. Drives two WaveShare 1.5" RGB OLED displays (128×128, SPI) as animated eyes and outputs audio through a MAX98357A I2S amplifier. Built on Raspberry Pi Pico SDK 2.3.1 in C++17 with CMake + Ninja.
 
 ## Features
 
 - Dual 128×128 RGB OLED eyes over shared SPI with per-eye CS/DC/RES
 - Configurable rendering primitives (planned): fill, blit, simple shapes
-- Audio output via MAX98357A (PIO-based I2S) with simple PCM streaming (planned)
+- Stereo audio output via a PIO-based I2S transmitter (`Max98357aI2sOutput`) with a DMA-backed ring buffer
 - Clean C++ architecture following SOLID principles
 
 ## Hardware
 
 - MCU: Raspberry Pi Pico 2 (RP2350) by default (`PICO_BOARD=pico2`)
 - Displays: 2× WaveShare 1.5" RGB OLED, 65K colors, 128×128, SPI (SSD1351-compatible)
-- Audio: MAX98357A I2S Class-D amplifier (mono)
+- Audio: MAX98357A / dual MAX98357A stereo breakout, I2S Class-D amplifier (stereo)
 
 See `docs/hardware.md` for wiring and pin mapping guidance.
 

@@ -54,6 +54,8 @@ add_executable(PicoMonsterEyes
 pico_set_program_name(PicoMonsterEyes "PicoMonsterEyes")
 pico_set_program_version(PicoMonsterEyes "0.1")
 
+pico_generate_pio_header(PicoMonsterEyes ${CMAKE_CURRENT_LIST_DIR}/drivers/audio_i2s.pio)
+
 # Modify the below lines to enable/disable output over UART/USB
 pico_enable_stdio_uart(PicoMonsterEyes 1)
 pico_enable_stdio_usb(PicoMonsterEyes 0)
@@ -77,6 +79,9 @@ target_link_libraries(PicoMonsterEyes
         hardware_spi
         hardware_i2c
     hardware_dma
+    hardware_pio
+    hardware_irq
+    hardware_clocks
         )
 
 pico_add_extra_outputs(PicoMonsterEyes)
