@@ -8,6 +8,11 @@
 namespace eyes {
 
 bool Ssd1351Display::init() {
+    reset_hardware();
+    return configure();
+}
+
+void Ssd1351Display::reset_hardware() {
     // Init GPIOs
     gpio_init(cs_);
     gpio_set_dir(cs_, GPIO_OUT);
@@ -21,12 +26,15 @@ bool Ssd1351Display::init() {
     gpio_set_dir(res_, GPIO_OUT);
     gpio_put(res_, 1);
 
-    // Ensure SPI is initialized
-    bus_.init();
+    // Bus is already initialized once by the caller before any display is constructed;
+    // re-calling spi_init() here per-display was glitching the shared SCK/MOSI lines
+    // and corrupting whichever display had already completed setup.
 
     // Hardware reset
     hw_reset();
+}
 
+bool Ssd1351Display::configure() {
     cs_select();
     // Unlock commands
     write_cmd(CMD_COMMANDLOCK); write_data((const uint8_t*)"\x12", 1);
@@ -147,9 +155,10 @@ void Ssd1351Display::dc_data() { gpio_put(dc_, 1); }
 
 void Ssd1351Display::hw_reset() {
     gpio_put(res_, 0);
-    sleep_ms(10);
+    sleep_ms(20);
     gpio_put(res_, 1);
-    sleep_ms(10);
+    // Settle time before commands: cold power-up needs longer than the 10ms this used to be.
+    sleep_ms(120);
 }
 
 void Ssd1351Display::write_cmd(uint8_t cmd) {

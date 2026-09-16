@@ -13,6 +13,8 @@ public:
         : bus_(bus), w_(width), h_(height), cs_(pin_cs), dc_(pin_dc), res_(pin_res) {}
 
     bool init() override;
+    void reset_hardware(); // GPIO setup + RES pulse only, no SPI commands yet
+    bool configure();      // full command sequence; call after all displays on the bus have reset_hardware() done
     void fill(uint16_t color) override;
     void blit(uint16_t const* pixels, const Rect& area) override;
     uint16_t width() const override { return w_; }

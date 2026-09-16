@@ -14,6 +14,9 @@
 #include <algorithm>
 #include <cstring>
 
+// Set to 1 to temporarily flash both panels solid red on boot as a wiring/power bring-up check.
+#define PME_DISPLAY_SOLID_FILL_TEST 1
+
 namespace eyes {
 
 // Persistent hardware singletons inside this translation unit
@@ -71,6 +74,9 @@ namespace {
 }
 
 bool App::init() {
+    // Let the displays' onboard supply/oscillator stabilize before driving SPI/reset on a cold power-up.
+    sleep_ms(150);
+
     // SPI pin mux
     gpio_set_function(pins::spi0_sck,  GPIO_FUNC_SPI);
     gpio_set_function(pins::spi0_mosi, GPIO_FUNC_SPI);
@@ -78,13 +84,17 @@ bool App::init() {
 
     static SpiBus spi(spi0, 16 * 1000 * 1000);
     spi.init();
-    // Try boosting SPI clock (panel often tolerates >16MHz). Step up to 30MHz.
-    spi.set_frequency(30 * 1000 * 1000);
+    // TEMP bring-up: dropped from 30MHz to improve signal integrity over jumper wires; raise once wiring is verified stable.
+    spi.set_frequency(8 * 1000 * 1000);
     g_spi = &spi;
 
     static Ssd1351Display left(spi, 128, 128, pins::left_cs,  pins::left_dc,  pins::left_res);
     static Ssd1351Display right(spi,128, 128, pins::right_cs, pins::right_dc, pins::right_res);
-    if (!left.init() || !right.init()) return false;
+    // Reset both displays first, before either runs its full command sequence, so one
+    // display's RES pulse can't disturb the other's already-completed configuration.
+    left.reset_hardware();
+    right.reset_hardware();
+    if (!left.configure() || !right.configure()) return false;
     g_left = &left;
     g_right = &right;
     left_ = g_left;
@@ -97,6 +107,14 @@ bool App::init() {
     params_left_.mirror_eyelids = true;
     params_right_.mirror_eyelids = false;
     init_emotion_shapes();
+
+#if PME_DISPLAY_SOLID_FILL_TEST
+    // TEMP bring-up aid: solid red confirms panel/wiring works independent of the eye renderer/assets.
+    left_->fill(0xF800);
+    right_->fill(0xF800);
+    sleep_ms(2000);
+#endif
+
     render_eye(frame_, params_left_);
     left_->blit(frame_, full);
     render_eye(frame_, params_right_);
