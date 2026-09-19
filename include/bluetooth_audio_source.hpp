@@ -19,7 +19,10 @@ public:
     uint32_t sample_rate_hz() const { return sample_rate_hz_; }
 
 private:
-    static constexpr uint16_t kPcmBlockFrames = 256;
+    // Upper bound on frames requested per refill(); must cover the worst-case elapsed
+    // time between timer callbacks (observed run-loop jitter can be several x
+    // kRefillIntervalMs), or excess demand silently gets clamped away below.
+    static constexpr uint16_t kPcmBlockFrames = 1024;
     static constexpr uint32_t kRefillIntervalMs = 5;
 
     AudioOutput& output_;
@@ -27,10 +30,13 @@ private:
     void (*playback_)(int16_t*, uint16_t, const btstack_audio_context_t*) = nullptr;
     uint32_t sample_rate_hz_ = 0;
     uint32_t dropped_frames_ = 0;
+    uint32_t last_refill_time_ms_ = 0;
     uint8_t volume_ = 127;
     bool output_ready_ = false;
     bool streaming_ = false;
-    int16_t pcm_[kPcmBlockFrames * 2]{};
+    // static: kPcmBlockFrames*2 int16s would otherwise blow the stack frame of whatever
+    // scope constructs this object (e.g. main()'s locals)
+    static int16_t pcm_[kPcmBlockFrames * 2];
 
     int configure(uint8_t channels, uint32_t sample_rate_hz,
                   void (*playback)(int16_t*, uint16_t, const btstack_audio_context_t*));

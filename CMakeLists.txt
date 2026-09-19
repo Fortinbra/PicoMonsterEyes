@@ -89,7 +89,9 @@ target_link_libraries(PicoMonsterEyes
 )
 
 target_sources(PicoMonsterEyes PRIVATE
-    ${PICO_BTSTACK_PATH}/example/a2dp_sink_demo.c
+    # Local fork of btstack's example/a2dp_sink_demo.c: rate-limits hot-path
+    # overflow logging (see src/a2dp_sink_demo.c header comment).
+    src/a2dp_sink_demo.c
 )
 
 # Add the standard include files to the build

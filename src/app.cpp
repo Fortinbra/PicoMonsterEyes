@@ -15,7 +15,7 @@
 #include <cstring>
 
 // Set to 1 to temporarily flash both panels solid red on boot as a wiring/power bring-up check.
-#define PME_DISPLAY_SOLID_FILL_TEST 1
+#define PME_DISPLAY_SOLID_FILL_TEST 0
 
 namespace eyes {
 
@@ -84,8 +84,8 @@ bool App::init() {
 
     static SpiBus spi(spi0, 16 * 1000 * 1000);
     spi.init();
-    // TEMP bring-up: dropped from 30MHz to improve signal integrity over jumper wires; raise once wiring is verified stable.
-    spi.set_frequency(8 * 1000 * 1000);
+    // Wiring confirmed solid (both displays working) - raised back up from the 8MHz bring-up value for smoother animation.
+    spi.set_frequency(20 * 1000 * 1000);
     g_spi = &spi;
 
     static Ssd1351Display left(spi, 128, 128, pins::left_cs,  pins::left_dc,  pins::left_res);
@@ -142,8 +142,8 @@ void App::choose_new_target() {
     float dx = gaze_tx_ - gaze_sx_;
     float dy = gaze_ty_ - gaze_sy_;
     float dist = std::sqrt(dx*dx + dy*dy);
-    saccade_duration_ = 0.04f + 0.06f * (dist / 24.f); // 40-100ms typical
-    if (saccade_duration_ > 0.12f) saccade_duration_ = 0.12f;
+    saccade_duration_ = 0.09f + 0.13f * (dist / 24.f); // 90-220ms, slower/smoother than a realistic human saccade
+    if (saccade_duration_ > 0.22f) saccade_duration_ = 0.22f;
     saccade_timer_ = 0.f;
 }
 
@@ -250,7 +250,7 @@ void App::loop() {
         if (saccade_duration_ <= 0.f && fixation_timer_ <= 0.f) {
             // Initialize first fixation interval
             fixation_timer_ = 0.f;
-            next_fixation_duration_ = 0.8f + rand01() * 1.4f; // 0.8 - 2.2s
+            next_fixation_duration_ = 3.5f + rand01() * 3.5f; // 3.5 - 7.0s
             choose_new_target(); // sets target & saccade params (not yet moving)
         }
         if (saccade_duration_ > 0.f && saccade_timer_ < saccade_duration_) {
@@ -265,7 +265,7 @@ void App::loop() {
             if (k >= 1.f) {
                 // Start fixation
                 fixation_timer_ = 0.f;
-                next_fixation_duration_ = (0.8f + rand01() * 1.4f) * emotion_fixation_scale;
+                next_fixation_duration_ = (3.5f + rand01() * 3.5f) * emotion_fixation_scale;
                 // Choose new pupil dilation target proportional to upcoming fixation length
                 float lenNorm = (next_fixation_duration_ - 0.8f) / 1.4f; // 0..1
                 float base = 0.9f + lenNorm * 0.3f; // 0.9 .. 1.2
@@ -278,8 +278,8 @@ void App::loop() {
             // In fixation
             fixation_timer_ += dt;
             // Small tremor / drift noise
-            float microX = (rand01() - 0.5f) * 0.6f; // +/-0.3 px
-            float microY = (rand01() - 0.5f) * 0.6f;
+            float microX = (rand01() - 0.5f) * 0.3f; // +/-0.15 px, halved for a calmer look
+            float microY = (rand01() - 0.5f) * 0.3f;
             gaze_cx_ += (microX * 0.15f); // integrate tiny noise for subtle motion
             gaze_cy_ += (microY * 0.15f);
             // Clamp to valid region

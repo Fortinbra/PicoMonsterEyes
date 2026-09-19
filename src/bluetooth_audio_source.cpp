@@ -1,6 +1,6 @@
 #include "bluetooth_audio_source.hpp"
 
-#include <algorithm>
+#include <cstdio>
 
 #include "audio_output.hpp"
 #include "pico/cyw43_arch.h"
@@ -10,6 +10,7 @@ extern "C" int btstack_main(int argc, const char* argv[]);
 namespace eyes {
 
 BluetoothAudioSource* BluetoothAudioSource::instance_ = nullptr;
+int16_t BluetoothAudioSource::pcm_[kPcmBlockFrames * 2];
 
 const btstack_audio_sink_t BluetoothAudioSource::sink_ = {
     sink_init,
@@ -52,15 +53,21 @@ int BluetoothAudioSource::configure(
     playback_ = playback;
     sample_rate_hz_ = sample_rate_hz;
     output_ready_ = output_.init(sample_rate_hz_);
+    printf("BluetoothAudioSource: configure channels=%u rate=%luHz output_ready=%d\n",
+           channels, static_cast<unsigned long>(sample_rate_hz_), output_ready_ ? 1 : 0);
     return output_ready_ ? 0 : 1;
 }
 
 void BluetoothAudioSource::start_stream() {
     if (!output_ready_ || streaming_ || !output_.start()) {
+        printf("BluetoothAudioSource: start_stream FAILED output_ready=%d streaming=%d\n",
+               output_ready_ ? 1 : 0, streaming_ ? 1 : 0);
         return;
     }
 
+    printf("BluetoothAudioSource: start_stream OK\n");
     streaming_ = true;
+    last_refill_time_ms_ = btstack_run_loop_get_time_ms();
     refill();
     btstack_run_loop_set_timer_handler(&refill_timer_, refill_timer_handler);
     btstack_run_loop_set_timer(&refill_timer_, kRefillIntervalMs);
@@ -87,10 +94,20 @@ void BluetoothAudioSource::refill() {
         return;
     }
 
-    const size_t requested = std::min(output_.available_frames(), static_cast<size_t>(kPcmBlockFrames));
-    if (requested == 0) {
-        return;
-    }
+    // Request a frame count proportional to actual elapsed wall-clock time rather than
+    // a fixed guess. The run loop's timer callbacks can fire noticeably later than
+    // kRefillIntervalMs under load (HCI/L2CAP/SBC decode all share this single core),
+    // and always pulling a fixed block undersupplied real-time demand whenever that
+    // happened, starving our own output DMA ring (silent underruns) even though SBC's
+    // ring buffer was draining fine. Any local backpressure is absorbed by write_frames()
+    // dropping already-decoded PCM rather than stalling the SBC decode pipeline.
+    const uint32_t now = btstack_run_loop_get_time_ms();
+    const uint32_t elapsed_ms = now - last_refill_time_ms_;
+    last_refill_time_ms_ = now;
+
+    uint32_t requested = (static_cast<uint64_t>(elapsed_ms) * sample_rate_hz_) / 1000;
+    if (requested == 0) requested = 1;
+    if (requested > kPcmBlockFrames) requested = kPcmBlockFrames;
 
     playback_(pcm_, static_cast<uint16_t>(requested), nullptr);
     if (volume_ < 127) {
@@ -144,6 +161,16 @@ void BluetoothAudioSource::refill_timer_handler(btstack_timer_source_t*) {
     }
 
     instance_->refill();
+
+    // rate-limited runtime stats (~once/second at kRefillIntervalMs=5ms) to diagnose
+    // sustained SBC ring buffer overflows without flooding stdio
+    static uint32_t tick = 0;
+    if ((++tick % 200) == 0) {
+        printf("BluetoothAudioSource: dropped=%lu underrun=%lu\n",
+               static_cast<unsigned long>(instance_->dropped_frames_),
+               static_cast<unsigned long>(instance_->output_.underrun_count()));
+    }
+
     btstack_run_loop_set_timer(&instance_->refill_timer_, kRefillIntervalMs);
     btstack_run_loop_add_timer(&instance_->refill_timer_);
 }
