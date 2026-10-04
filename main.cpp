@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include "pico/multicore.h"
 #include "pico/stdlib.h"
-#include "pico/stdio_usb.h"
 
 #include "boards/pico2_pins.hpp"
 #include "drivers/max98357a_i2s_output.hpp"
@@ -18,7 +17,6 @@ void run_eyes() {
 
 int main() {
     stdio_init_all();
-    while (!stdio_usb_connected()) { sleep_ms(100); } // block until a host terminal opens the USB CDC port
     printf("PicoMonsterEyes booting...\n");
 
     if (!app.init()) {

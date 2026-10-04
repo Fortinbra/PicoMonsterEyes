@@ -32,7 +32,7 @@ bool BluetoothAudioSource::init() {
 
     btstack_audio_sink_set_instance(&sink_);
     btstack_main(0, nullptr);
-    gap_set_local_name("Pico Monster Eyes");
+    gap_set_local_name("Frankie");
     return true;
 }
 

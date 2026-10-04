@@ -28,6 +28,11 @@ The firmware follows SOLID principles and separates hardware drivers from applic
 - Use `pico_time` alarms for periodic tasks
 - Keep IRQ/PIO handlers minimal; move work to foreground
 
+Gaze starts with a six-second centered stare, then alternates eased movements
+(0.9-1.8 seconds) with randomized 6-10 second fixations. Emotion modifiers may
+lengthen pauses or slow movement, but cannot make either faster than this calm
+baseline. Blinks, rendering, and audio continue independently during fixations.
+
 ## Directory layout (planned)
 
 - include/

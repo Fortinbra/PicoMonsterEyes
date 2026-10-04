@@ -2,7 +2,7 @@
 
 ## Status
 
-Implemented in firmware; physical hardware acceptance testing remains. A phone can discover the Pico 2 W as `Pico Monster Eyes`, pair using Bluetooth Classic A2DP, and play SBC-decoded stereo audio through the Adafruit Stereo I2S 3W Amplifier Breakout - Dual MAX98357A.
+Implemented in firmware; physical hardware acceptance testing remains. A phone can discover the Pico 2 W as `Frankie`, pair using Bluetooth Classic A2DP, and play SBC-decoded stereo audio through the Adafruit Stereo I2S 3W Amplifier Breakout - Dual MAX98357A.
 
 The firmware targets `pico2_w`, and the installed Pico SDK includes `pico_btstack` and `pico_cyw43_arch`. The official upstream `pico-examples` repository provides `a2dp_sink_demo` ("A2DP Sink - Receive Audio Stream and Control Playback") as the implementation baseline. The upstream Pico audio backend requires `pico-extras`, but this project replaces that backend with its existing I2S driver.
 

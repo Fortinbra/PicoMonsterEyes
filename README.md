@@ -22,10 +22,13 @@ See `docs/hardware.md` for wiring and pin mapping guidance.
 This is bare-metal firmware. Do not run locally. Use the VS Code tasks only:
 
 - Build: Task "Compile Project"
+- Full rebuild: Task "Clean Project", followed by task "Compile Project"
 - Flash via USB bootloader: Task "Run Project" (picotool)
 - Flash via SWD: Task "Flash" (OpenOCD)
 
 The tasks are preconfigured by the Raspberry Pi Pico VS Code extension and use the Ninja generator. Avoid running raw `cmake`/`ninja` commands.
+
+Firmware starts without waiting for a USB serial terminal. USB serial logging remains enabled; connect a terminal to see messages emitted after it connects.
 
 ## Repository layout
 

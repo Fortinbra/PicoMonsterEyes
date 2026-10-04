@@ -138,12 +138,12 @@ void App::choose_new_target() {
     gaze_sy_ = gaze_cy_;
     gaze_tx_ = sample_axis(minC, maxC);
     gaze_ty_ = sample_axis(minC, maxC);
-    // Saccade duration: small angle -> shorter jump.
+    // Longer moves take more time, with a slow scan rather than a sudden jump.
     float dx = gaze_tx_ - gaze_sx_;
     float dy = gaze_ty_ - gaze_sy_;
     float dist = std::sqrt(dx*dx + dy*dy);
-    saccade_duration_ = 0.09f + 0.13f * (dist / 24.f); // 90-220ms, slower/smoother than a realistic human saccade
-    if (saccade_duration_ > 0.22f) saccade_duration_ = 0.22f;
+    saccade_duration_ = kGazeMoveMinSeconds
+        + (kGazeMoveMaxSeconds - kGazeMoveMinSeconds) * std::min(dist / 24.f, 1.f);
     saccade_timer_ = 0.f;
 }
 
@@ -181,8 +181,8 @@ void App::loop() {
 
         // Emotion influences (modulate parameters heuristically) computed for both prev and current to blend:
         // Sad: slower saccades, longer fixations, narrower pupil, half-lidded
-        // Fear: rapid small saccades, shorter fixations, dilated pupil, eyelids more open (wider)
-        // Anger: focused shorter fixations, medium-fast saccades, slight constrict, upper lid lowered
+        // Fear: dilated pupil, eyelids more open (wider)
+        // Anger: slight constrict, upper lid lowered
         // Disgust: biased upward gaze, moderate speed, some constrict, slight upper lid raise and lower lid raise.
         struct EmoParams { float fix_scale, sacc_scale, pupil_bias, eyelid_bias, gaze_bx, gaze_by; uint16_t tint_col; float tint_strength; int8_t* upper; int8_t* lower; bool tint_on; };
         auto compute = [&](Emotion e){
@@ -210,8 +210,8 @@ void App::loop() {
             f = x * x * x * (x * (x * 6.f - 15.f) + 10.f);
         }
         auto lerp = [&](float a,float b){return a + (b-a)*f;};
-        float emotion_fixation_scale = lerp(prevp.fix_scale, curp.fix_scale);
-        float emotion_saccade_speed_scale = lerp(prevp.sacc_scale, curp.sacc_scale);
+        float emotion_fixation_scale = std::max(lerp(prevp.fix_scale, curp.fix_scale), 1.f);
+        float emotion_saccade_speed_scale = std::min(lerp(prevp.sacc_scale, curp.sacc_scale), 1.f);
         float emotion_pupil_bias = lerp(prevp.pupil_bias, curp.pupil_bias);
         float eyelid_open_bias = lerp(prevp.eyelid_bias, curp.eyelid_bias);
         float gaze_bias_x = lerp(prevp.gaze_bx, curp.gaze_bx);
@@ -247,27 +247,22 @@ void App::loop() {
     params_left_.upper_shape_adjust = upper_blend; params_right_.upper_shape_adjust = upper_blend;
     params_left_.lower_shape_adjust = lower_blend; params_right_.lower_shape_adjust = lower_blend;
         // Gaze state machine: fixation -> saccade
-        if (saccade_duration_ <= 0.f && fixation_timer_ <= 0.f) {
-            // Initialize first fixation interval
-            fixation_timer_ = 0.f;
-            next_fixation_duration_ = 3.5f + rand01() * 3.5f; // 3.5 - 7.0s
-            choose_new_target(); // sets target & saccade params (not yet moving)
-        }
         if (saccade_duration_ > 0.f && saccade_timer_ < saccade_duration_) {
-            // In saccade (ballistic interpolation with ease-in/out to avoid stepping artifacts visually)
+            // Ease into and out of each gaze movement.
             saccade_timer_ += dt * emotion_saccade_speed_scale; // speed scale
             float k = saccade_timer_ / saccade_duration_;
             if (k > 1.f) k = 1.f;
-            // Fast accel/decel curve approximating main-sequence velocity profile
             float ease = k * k * (3 - 2*k);
             gaze_cx_ = gaze_sx_ + (gaze_tx_ - gaze_sx_) * ease;
             gaze_cy_ = gaze_sy_ + (gaze_ty_ - gaze_sy_) * ease;
             if (k >= 1.f) {
                 // Start fixation
                 fixation_timer_ = 0.f;
-                next_fixation_duration_ = (3.5f + rand01() * 3.5f) * emotion_fixation_scale;
+                next_fixation_duration_ = (kFixationMinSeconds + rand01() * kFixationJitterSeconds)
+                    * emotion_fixation_scale;
                 // Choose new pupil dilation target proportional to upcoming fixation length
-                float lenNorm = (next_fixation_duration_ - 0.8f) / 1.4f; // 0..1
+                float lenNorm = std::clamp(
+                    (next_fixation_duration_ - kFixationMinSeconds) / kFixationJitterSeconds, 0.f, 1.f);
                 float base = 0.9f + lenNorm * 0.3f; // 0.9 .. 1.2
                 base *= (0.95f + rand01() * 0.10f); // +/-5%
                 if (base < 0.75f) base = 0.75f; else if (base > 1.25f) base = 1.25f;

@@ -14,6 +14,10 @@ private:
     // Framebuffer and render state
     static constexpr int kFrameW = 128;
     static constexpr int kFrameH = 128;
+    static constexpr float kFixationMinSeconds = 6.0f;
+    static constexpr float kFixationJitterSeconds = 4.0f;
+    static constexpr float kGazeMoveMinSeconds = 0.9f;
+    static constexpr float kGazeMoveMaxSeconds = 1.8f;
     uint16_t frame_[kFrameW * kFrameH]{};
     // Separate buffer for base (sclera/iris/highlights) so we can apply eyelids twice
     uint16_t base_frame_[kFrameW * kFrameH]{};
@@ -32,7 +36,7 @@ private:
     float gaze_tx_ = gaze_cx_;       // target position
     float gaze_ty_ = gaze_cy_;
     float fixation_timer_ = 0.f;
-    float next_fixation_duration_ = 1.0f; // seconds
+    float next_fixation_duration_ = kFixationMinSeconds;
     float saccade_timer_ = 0.f;
     float saccade_duration_ = 0.f;
     uint32_t rng_state_ = 0x12345678u;
